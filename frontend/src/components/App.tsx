@@ -3,13 +3,17 @@ import {useState,useEffect} from 'react'
 import Toast from './Toast'
 import Github from './Github'
 import axios from 'axios'
+import TypedLineGraph from './Chart'
 export default function App(){
   const [plantData,setPlantData] = useState<null | any>(null)
   const [toast,setToast] = useState<{msg:string,ok:boolean}>({msg:"",ok:false})
   const [page,setPage] = useState(0)
   const [tab,setTab] = useState<'table'|'graph'>("table")
+  const [graphData,setGraphData] = useState<null | any>(null)
   function clearToast(){
-    setToast({msg:"",ok:false})
+    setTimeout(()=>{
+      setToast({msg:"",ok:false})
+    },3000)
   }
   async function fetchData(){
     try {
@@ -21,55 +25,111 @@ export default function App(){
       setToast({msg:"An error occured.",ok:false})
     }
     clearToast()
+    compileGraphData()
+  }
+  function compileGraphData(){
+    let d:Record<string,Number[]>= {
+      'soil_moisture': [],
+      'humidity': [],
+      'light_intensity': [],
+      'temperature': [],
+      'soil_temperature': [],
+      'tds': []
+    }
+    let dates = []
+    console.log(d)
+    if(plantData !== null){
+      for(let x = 0; x < plantData.length; x++){
+        dates.push(new Date(plantData[x].created_at).toLocaleDateString() + ' ' + new Date(plantData[x].created_at).toLocaleTimeString())
+        d['soil_moisture'].push(plantData[x].soil_moisture)
+        d['humidity'].push(plantData[x].humidity)
+        d['light_intensity'].push(plantData[x].light_intensity)
+        d['temperature'].push(plantData[x].temperature)
+        d['soil_temperature'].push(plantData[x].soil_temperature)
+        d['tds'].push(plantData[x].tds)
+      }
+    }
+    let data = []
+    for(let key in d){
+      data.push({
+        label:key,
+        data:d[key],
+        borderColor:`hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`,
+        backgroundColor:`hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`,
+      })
+    }
+    setGraphData({ labels:dates, datasets:data });
   }
   useEffect(()=>{
     fetchData()
   },[])
   return (
-    <div>
-      <div className='flex justify-center items-center flex-col'>
-        <h1>Plant Data Monitor</h1>
+    <div className='min-h-screen bg-gray-50 p-6'>
+      <div className='flex flex-col items-center'>
+        <h1 className='text-4xl font-extrabold text-gray-800 mb-8'>Plant Data Monitor</h1>
+        <div className='flex gap-4 mb-6 bg-white p-2 rounded-xl shadow-sm'>
+          <button 
+            className={`px-6 py-2 rounded-lg font-medium transition ${tab === 'table' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+            onClick={()=>{
+              setTab('table')
+            }}>Table</button>
+          <button 
+            className={`px-6 py-2 rounded-lg font-medium transition ${tab === 'graph' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+            onClick={()=>{
+              setTab('graph')
+              compileGraphData()
+            }}>Graph</button>
+        </div>
         {plantData === null && (
-            <h3>Loading...</h3>
+            <h3 className='text-lg text-gray-500'>Loading...</h3>
         )}
-        {plantData !== null && (
-          <div>
-            <table>
-              <thead>
+        {plantData !== null && graphData !== null && tab === 'graph' && (
+          <div className='w-full max-w-4xl bg-white p-6 rounded-xl shadow-md'>
+            <TypedLineGraph data={graphData} />
+          </div>
+        )}
+        {plantData !== null && tab === 'table' && (
+          <div className='w-full max-w-5xl bg-white rounded-xl shadow-md overflow-hidden'>
+            <table className='w-full text-left'>
+              <thead className='bg-gray-100 text-gray-700 uppercase text-sm font-semibold'>
                 <tr>
-                  <td>Time</td>
-                  <td>Soil Moisture (%)</td>
-                  <td>Humidity (%)</td>
-                  <td>Light Intensity (lux)</td>
-                  <td>Temperature (°C)</td>
-                  <td>Soil Temperature (°C)</td>
-                  <td>Total Dissolved Solids/TDS (ppm)</td>
+                  <th className='p-4'>Time</th>
+                  <th className='p-4'>Soil Moisture (%)</th>
+                  <th className='p-4'>Humidity (%)</th>
+                  <th className='p-4'>Light Intensity (lux)</th>
+                  <th className='p-4'>Temperature (°C)</th>
+                  <th className='p-4'>Soil Temperature (°C)</th>
+                  <th className='p-4'>TDS (ppm)</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className='divide-y divide-gray-200'>
                 {plantData.slice((page * 10),(page * 10) + 10).map((val:any,idx:any)=>(
-                  <tr key={idx}>
-                    <td>{new Date(val.created_at).toLocaleDateString() + ' ' + new Date(val.created_at).toLocaleTimeString()}</td>
-                    <td>{val.soil_moisture}</td>
-                    <td>{val.humidity}</td>
-                    <td>{val.light_intensity}</td>
-                    <td>{val.temperature}</td>
-                    <td>{val.soil_temperature}</td>
-                    <td>{val.tds}</td>
+                  <tr key={idx} className='hover:bg-gray-50'>
+                    <td className='p-4 text-sm text-gray-700'>{new Date(val.created_at).toLocaleString()}</td>
+                    <td className='p-4 text-sm text-gray-700'>{val.soil_moisture}</td>
+                    <td className='p-4 text-sm text-gray-700'>{val.humidity}</td>
+                    <td className='p-4 text-sm text-gray-700'>{val.light_intensity}</td>
+                    <td className='p-4 text-sm text-gray-700'>{val.temperature}</td>
+                    <td className='p-4 text-sm text-gray-700'>{val.soil_temperature}</td>
+                    <td className='p-4 text-sm text-gray-700'>{val.tds}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className='grid grid-cols-3 p-4 gap-4'>
-              <button onClick={()=>{
+            <div className='flex justify-between items-center p-4 bg-gray-50 border-t'>
+              <button 
+                className='px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100'
+                onClick={()=>{
                 setPage(p => {
                   if(p > 0){
                     return p - 1
                   } return p
                 })
               }}>Prev</button>
-              <h3>{page + 1}</h3>
-              <button onClick={()=>{
+              <h3 className='text-sm font-semibold text-gray-700'>Page {page + 1}</h3>
+              <button 
+                className='px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100'
+                onClick={()=>{
                 setPage(p => {
                   if(p < Math.floor(plantData.length / 10)){
                     return p + 1
