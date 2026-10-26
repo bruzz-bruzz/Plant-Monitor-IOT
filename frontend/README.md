@@ -4,7 +4,7 @@ This is the frontend dashboard for the plant monitoring system, built with React
 
 ## Application Flow
 
-[Flowchart](flowchart.png)
+![Application Flowchart](./flowchart.png)
 
 ## Setup
 1.  Install dependencies: `npm install`

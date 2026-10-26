@@ -4,7 +4,7 @@ This is the backend for the plant monitoring system, built with Node.js, Express
 
 ## API Flow
 
-[Flowchart](flowchart.png)
+![API Flowchart](./flowchart.png)
 
 ## Setup
 1.  Install dependencies: `npm install`

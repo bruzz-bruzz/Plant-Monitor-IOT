@@ -4,7 +4,7 @@ This project contains the firmware for the ESP32-based plant monitoring system. 
 
 ## System Flow
 
-[Flowchart](flowchart.png)
+![System Flowchart](./flowchart.png)
 
 ## Contents
 - **BOM.md**: Bill of Materials for the project.
