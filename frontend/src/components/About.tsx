@@ -19,11 +19,11 @@ export default function About() {
                         Our IoT sensors collect data on soil moisture, ambient humidity, light intensity, 
                         temperature, soil temperature, and nutrient levels (TDS).
                     </p>
-                    <ul className="list-disc list-inside text-lg text-gray-600 space-y-2">
+                    <ol className="list-decimal list-inside text-lg text-gray-600 space-y-2">
                         <li>Data is processed and analyzed against ideal growth ranges.</li>
                         <li>The dashboard visualizes this data through tables, graphs, and overview cards.</li>
                         <li>Color-coded health indicators make it easy to spot issues at a glance.</li>
-                    </ul>
+                    </ol>
                 </section>
 
                 <div className="flex items-center gap-4 pt-6 border-t border-gray-100">
