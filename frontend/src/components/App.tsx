@@ -1,34 +1,58 @@
 import './App.css'
-import {useState,useEffect} from 'react'
+import {useState,useEffect,useCallback} from 'react'
+import {Link} from 'react-router-dom'
 import Toast from './Toast'
 import Github from './Github'
 import axios from 'axios'
 import TypedLineGraph from './Chart'
+import MetricCard from './MetricCard'
+import type { MetricKey } from '../constants/metrics'
 export default function App(){
   const [plantData,setPlantData] = useState<null | any>(null)
   const [toast,setToast] = useState<{msg:string,ok:boolean}>({msg:"",ok:false})
   const [page,setPage] = useState(0)
-  const [tab,setTab] = useState<'table'|'graph'>("table")
+  const [tab,setTab] = useState<'table'|'graph'|'overview'>("table")
   const [graphData,setGraphData] = useState<null | any>(null)
+  const identifierMap:Record<string,string[]> = {
+    'soil_moisture':['Soil Moisture','%'],
+    'temperature':['Ambient Temperature',"°C"],
+    'humidity':['Humidity',"%"],
+    'light_intensity':['Light Intensity',"lux"],
+    'soil_temperature':['Soil Temperature',"°C"],
+    'tds':['Total Dissolved Solids (TDS)','ppm']
+  }
   function clearToast(){
     setTimeout(()=>{
       setToast({msg:"",ok:false})
     },3000)
   }
-  async function fetchData(){
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}`)
-      setPlantData(res.data.data)
-      console.log(res.data)
-      setToast({msg:"Data fetched successfully.",ok:true})
-    }catch(e){
-      setToast({msg:"An error occured.",ok:false})
+  function compileOverview() {
+    let d: Record<string, number> = {
+      'soil_moisture': 0,
+      'humidity': 0,
+      'light_intensity': 0,
+      'temperature': 0,
+      'soil_temperature': 0,
+      'tds': 0
     }
-    clearToast()
-    compileGraphData()
+    if (plantData !== null && plantData.length > 0) {
+      for (let x = 0; x < plantData.length; x++) {
+        d['soil_moisture'] += (plantData[x].soil_moisture)
+        d['humidity'] += (plantData[x].humidity)
+        d['light_intensity'] += (plantData[x].light_intensity)
+        d['temperature'] += (plantData[x].temperature)
+        d['soil_temperature'] += (plantData[x].soil_temperature)
+        d['tds'] += (plantData[x].tds)
+      }
+      for (const key of Object.keys(d)) {
+        d[key] = parseFloat((d[key] / plantData.length).toFixed(3))
+      }
+    }
+    return [d, {}]
   }
-  function compileGraphData(){
-    let d:Record<string,Number[]>= {
+
+  function compileGraphData() {
+    let d: Record<string, number[]> = {
       'soil_moisture': [],
       'humidity': [],
       'light_intensity': [],
@@ -37,9 +61,8 @@ export default function App(){
       'tds': []
     }
     let dates = []
-    console.log(d)
-    if(plantData !== null){
-      for(let x = 0; x < plantData.length; x++){
+    if (plantData !== null) {
+      for (let x = 0; x < plantData.length; x++) {
         dates.push(new Date(plantData[x].created_at).toLocaleDateString() + ' ' + new Date(plantData[x].created_at).toLocaleTimeString())
         d['soil_moisture'].push(plantData[x].soil_moisture)
         d['humidity'].push(plantData[x].humidity)
@@ -50,35 +73,57 @@ export default function App(){
       }
     }
     let data = []
-    for(let key in d){
+    for (let key in d) {
       data.push({
-        label:key,
-        data:d[key],
-        borderColor:`hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`,
-        backgroundColor:`hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`,
+        label: key,
+        data: d[key],
+        borderColor: `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`,
+        backgroundColor: `hsl(${Math.floor(Math.random() * 360)}, 100%, 50%)`,
       })
     }
-    setGraphData({ labels:dates, datasets:data });
+    setGraphData({ labels: dates, datasets: data });
   }
-  useEffect(()=>{
+
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}`)
+      setPlantData(res.data.data)
+      setToast({ msg: "Data fetched successfully.", ok: true })
+    } catch (_e) {
+      setToast({ msg: "An error occured.", ok: false })
+    }
+    clearToast()
+    compileGraphData()
+  }, [])
+
+  useEffect(() => {
     fetchData()
-  },[])
+  }, [fetchData])
   return (
     <div className='min-h-screen bg-gray-50 p-6'>
       <div className='flex flex-col items-center'>
         <h1 className='text-4xl font-extrabold text-gray-800 mb-8'>Plant Data Monitor</h1>
-        <div className='flex gap-4 mb-6 bg-white p-2 rounded-xl shadow-sm'>
+        <div className='flex gap-4 mb-10 bg-white p-2 rounded-2xl shadow-sm border border-gray-100'>
           <button 
-            className={`px-6 py-2 rounded-lg font-medium transition ${tab === 'table' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`px-8 py-3 rounded-xl font-semibold text-lg transition ${tab === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'}`}
             onClick={()=>{
               setTab('table')
             }}>Table</button>
           <button 
-            className={`px-6 py-2 rounded-lg font-medium transition ${tab === 'graph' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`px-8 py-3 rounded-xl font-semibold text-lg transition ${tab === 'graph' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'}`}
             onClick={()=>{
               setTab('graph')
               compileGraphData()
             }}>Graph</button>
+            <button 
+            className={`px-8 py-3 rounded-xl font-semibold text-lg transition ${tab === 'overview' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100'}`}
+            onClick={()=>{
+              setTab('overview')
+            }}>Overview</button>
+            <Link 
+              to="/about"
+              className="px-8 py-3 rounded-xl font-semibold text-lg text-gray-600 hover:bg-gray-100 transition flex items-center"
+            >About</Link>
         </div>
         {plantData === null && (
             <h3 className='text-lg text-gray-500'>Loading...</h3>
@@ -86,6 +131,22 @@ export default function App(){
         {plantData !== null && graphData !== null && tab === 'graph' && (
           <div className='w-full max-w-4xl bg-white p-6 rounded-xl shadow-md'>
             <TypedLineGraph data={graphData} />
+          </div>
+        )}
+        {plantData !== null && tab === 'overview' && (
+          <div className='flex flex-col items-center'>
+            <h1 className='text-3xl font-bold mb-6 text-gray-800'>Data Overview</h1>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4'>
+              {Object.keys(compileOverview()[0]).map((val,idx)=>(
+                <MetricCard 
+                    key={idx}
+                    metric={val as MetricKey}
+                    value={compileOverview()[0][val] as number}
+                    label={identifierMap[val][0]}
+                    unit={identifierMap[val][1]}
+                />
+              ))}
+            </div>
           </div>
         )}
         {plantData !== null && tab === 'table' && (
@@ -126,7 +187,7 @@ export default function App(){
                   } return p
                 })
               }}>Prev</button>
-              <h3 className='text-sm font-semibold text-gray-700'>Page {page + 1}</h3>
+              <h3 className='text-sm font-semibold text-gray-700'>Page {page + 1} / {Math.floor(plantData.length / 10) + (Math.ceil(plantData.length % 10 / 10))}</h3>
               <button 
                 className='px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100'
                 onClick={()=>{
